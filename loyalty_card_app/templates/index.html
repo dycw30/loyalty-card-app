@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>Loyalty Card</title></head>
+<body>
+  <h2>Coffee Order</h2>
+  <form action="/submit_order" method="POST">
+    Name: <input type="text" name="name" required><br>
+    Drink: <input type="text" name="drink" required><br>
+    Tokens Earned: <input type="number" name="tokens" value="1" required><br>
+    <input type="submit" value="Record Order">
+  </form>
+  <br><br>
+  <a href="/export">Export to Excel</a>
+</body>
+</html>
