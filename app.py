@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, send_file
+from flask import Flask, render_template, request, redirect, send_file, session, url_for
 import sqlite3
 from datetime import datetime
 import os
 import pandas as pd
 
 app = Flask(__name__)
+app.secret_key = 'supersecretkey'  # Needed for session handling
 DB_NAME = "orders.db"
 
 def init_db():
@@ -23,8 +24,28 @@ def init_db():
     conn.commit()
     conn.close()
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        if username == "admin" and password == "coffee123":
+            session["logged_in"] = True
+            return redirect(url_for("index"))
+        else:
+            return render_template("login.html", error="Invalid credentials")
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 @app.route("/", methods=["GET", "POST"])
 def index():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         name = request.form["name"]
         drink = request.form["drink"]
@@ -49,6 +70,9 @@ def index():
 
 @app.route("/export")
 def export():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
     conn = sqlite3.connect(DB_NAME)
     df = pd.read_sql_query("SELECT * FROM orders", conn)
     conn.close()
