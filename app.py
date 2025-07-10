@@ -1,64 +1,70 @@
 from flask import Flask, render_template, request, redirect, send_file
 import sqlite3
-import csv
 from datetime import datetime
+import os
+import pandas as pd
 
 app = Flask(__name__)
+DB_NAME = "orders.db"
 
 def init_db():
-    conn = sqlite3.connect('db.sqlite3')
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute('''
+    c.execute("""
         CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer_name TEXT,
             drink_type TEXT,
             tokens INTEGER,
-            redeemed BOOLEAN DEFAULT 0,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            redeemed INTEGER,
+            date TEXT
         )
-    ''')
+    """)
     conn.commit()
     conn.close()
 
-@app.route('/')
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template('index.html')
+    if request.method == "POST":
+        name = request.form["name"]
+        drink = request.form["drink"]
+        tokens = int(request.form["tokens"])
+        redeemed = 1 if "redeemed" in request.form else 0
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-@app.route('/submit_order', methods=['POST'])
-def submit_order():
-    name = request.form['name']
-    drink = request.form['drink']
-    tokens = int(request.form['tokens'])
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute("INSERT INTO orders (customer_name, drink_type, tokens, redeemed, date) VALUES (?, ?, ?, ?, ?)",
+                  (name, drink, tokens, redeemed, date))
+        conn.commit()
+        conn.close()
+        return redirect("/")
 
-    conn = sqlite3.connect('db.sqlite3')
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute('INSERT INTO orders (customer_name, drink_type, tokens) VALUES (?, ?, ?)',
-              (name, drink, tokens))
-    conn.commit()
+    c.execute("SELECT * FROM orders ORDER BY date DESC")
+    orders = c.fetchall()
     conn.close()
-    return redirect('/')
+    return render_template("index.html", orders=orders)
 
-@app.route('/export')
+@app.route("/export")
 def export():
-    conn = sqlite3.connect('db.sqlite3')
-    c = conn.cursor()
-    c.execute('SELECT * FROM orders')
-    rows = c.fetchall()
+    conn = sqlite3.connect(DB_NAME)
+    df = pd.read_sql_query("SELECT * FROM orders", conn)
     conn.close()
 
-    filename = 'orders_export.csv'
-    with open(filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['ID', 'Customer', 'Drink', 'Tokens', 'Redeemed', 'Timestamp'])
-        writer.writerows(rows)
+    if df.empty:
+        return "No data to export"
 
-    return send_file(filename, as_attachment=True)
+    df["Redeemed?"] = df["redeemed"].apply(lambda x: "Yes" if x else "No")
+    df = df[["customer_name", "date", "drink_type", "tokens", "Redeemed?"]]
+    df.columns = ["Customer Name", "Date", "Drink Type", "Tokens Earned", "Redeemed?"]
 
-if __name__ == '__main__':
-    init_db()
-    import os
+    output_file = "orders.xlsx"
+    df.to_excel(output_file, index=False)
+    return send_file(output_file, as_attachment=True)
 
 if __name__ == "__main__":
+    init_db()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

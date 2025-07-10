@@ -1,15 +1,27 @@
 <!DOCTYPE html>
 <html>
-<head><title>Loyalty Card</title></head>
+<head>
+    <title>Loyalty Card App</title>
+</head>
 <body>
-  <h2>Coffee Order</h2>
-  <form action="/submit_order" method="POST">
-    Name: <input type="text" name="name" required><br>
-    Drink: <input type="text" name="drink" required><br>
-    Tokens Earned: <input type="number" name="tokens" value="1" required><br>
-    <input type="submit" value="Record Order">
-  </form>
-  <br><br>
-  <a href="/export">Export to Excel</a>
+    <h1>Loyalty Card</h1>
+    <form method="post">
+        <label>Name:</label><br>
+        <input type="text" name="name" required><br>
+        <label>Drink Type:</label><br>
+        <input type="text" name="drink" required><br>
+        <label>Tokens Earned:</label><br>
+        <input type="number" name="tokens" value="1" required><br>
+        <input type="checkbox" name="redeemed"> Redeemed?<br><br>
+        <button type="submit">Submit</button>
+    </form>
+    <br>
+    <a href="/export"><button>Export to Excel</button></a>
+    <h2>Orders</h2>
+    <ul>
+    {% for order in orders %}
+        <li>{{ order[1] }} - {{ order[2] }} - Tokens: {{ order[3] }} - Redeemed: {{ 'Yes' if order[4] else 'No' }} - Date: {{ order[5] }}</li>
+    {% endfor %}
+    </ul>
 </body>
 </html>
